@@ -1,0 +1,219 @@
+repo: pallets/click
+tasks:
+  - id: click-default-envvar
+    repo: pallets/click
+    title: Environment variable is ignored when a default is set
+    category: bugfix
+    difficulty: medium
+    split: train
+    fixture: click-default-envvar
+    timeout_sec: 300
+    image: python:3.12-slim
+    tags: [cli, env]
+    instruction: |
+      `resolve_count` should prefer an explicit CLI value, then the APP_COUNT
+      environment variable, then the numeric default. Right now APP_COUNT is
+      only consulted when the default is None, so a configured default of 1
+      hides the environment. Public tests already cover the explicit flag.
+      Keep those passing and make the environment win over the default when
+      the flag is omitted.
+    grader:
+      command: python -m pytest tests/test_hidden.py tests/test_public.py -q
+      regression_command: python -m pytest tests/test_public.py -q
+      timeout_sec: 60
+  - id: click-group-chain
+    repo: pallets/click
+    title: Chained group drops the parent context object
+    category: bugfix
+    difficulty: medium
+    split: train
+    timeout_sec: 600
+    image: python:3.12-slim
+    tags: [cli, context]
+    instruction: |
+      A nested Click group invoked as `tool sub cmd` arrives in the child
+      command with `ctx.obj` set to None even though the root callback stored
+      a config dict. The result callback of the parent still sees the object.
+      Restore propagation for chained commands without changing the single-command path.
+    grader:
+      command: python -m pytest tests/test_context_chain.py -q
+      regression_command: python -m pytest tests/test_context_basic.py -q
+      timeout_sec: 120
+  - id: click-help-width
+    repo: pallets/click
+    title: Help wraps one column too early on a wide terminal
+    category: bugfix
+    difficulty: easy
+    split: train
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [help]
+    instruction: |
+      `click.Context.terminal_width` is honored by echo, but the formatter used
+      by `--help` subtracts the option gutter twice. On a 100-column terminal
+      the usage line wraps at 76. Fix the width budget. Snapshot tests for 80
+      columns must stay byte-stable.
+    grader:
+      command: python -m pytest tests/test_help_width.py -q
+      regression_command: python -m pytest tests/test_help_80.py -q
+      timeout_sec: 90
+  - id: click-path-type
+    repo: pallets/click
+    title: Path(exists=True) accepts a directory for a file option
+    category: bugfix
+    difficulty: easy
+    split: train
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [types]
+    instruction: |
+      An option declared `type=click.Path(exists=True, dir_okay=False)` still
+      accepts a directory path and returns it as a string. File paths that
+      exist should keep working, missing paths should still fail, and a
+      directory should raise a BadParameter before the command body runs.
+    grader:
+      command: python -m pytest tests/test_path_file.py -q
+      regression_command: python -m pytest tests/test_path_exists.py -q
+      timeout_sec: 90
+  - id: click-multiple-nargs
+    repo: pallets/click
+    title: multiple=True drops every value after the first
+    category: bugfix
+    difficulty: medium
+    split: train
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [options]
+    instruction: |
+      `@click.option("--tag", multiple=True)` collects only the first occurrence.
+      `tool --tag a --tag b` should pass `("a", "b")`. A single `--tag a` must
+      still pass `("a",)` and the default empty tuple must be unchanged.
+    grader:
+      command: python -m pytest tests/test_multiple.py -q
+      regression_command: python -m pytest tests/test_option_defaults.py -q
+      timeout_sec: 90
+  - id: click-flag-value
+    repo: pallets/click
+    title: Boolean flag with flag_value ignores the off switch
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [flags]
+    instruction: |
+      `--mode` is a flag with `flag_value="json"` and a paired `--text` flag
+      with `flag_value="text"`. Passing `--text` after `--mode` still leaves
+      the value as `"json"`. Last flag on the command line should win. The
+      default when neither is passed stays `"text"`.
+    grader:
+      command: python -m pytest tests/test_flag_value.py -q
+      regression_command: python -m pytest tests/test_flag_default.py -q
+      timeout_sec: 90
+  - id: click-context-obj
+    repo: pallets/click
+    title: make_pass_decorator returns the parent object
+    category: bugfix
+    difficulty: hard
+    split: held_out
+    timeout_sec: 600
+    image: python:3.12-slim
+    tags: [context]
+    instruction: |
+      A command decorated with `@pass_repo` (ensure=True) receives the root
+      context object rather than the Repo instance stored under the child
+      context. Sibling commands that read `ctx.obj` directly are fine. Fix the
+      decorator lookup so the annotated type is the one injected.
+    grader:
+      command: python -m pytest tests/test_pass_decorator.py -q
+      regression_command: python -m pytest tests/test_context_basic.py -q
+      timeout_sec: 120
+  - id: click-prompt-eof
+    repo: pallets/click
+    title: EOF on a required prompt exits 0
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [prompt]
+    instruction: |
+      When stdin is closed during `click.prompt` for a required option, the
+      command exits 0 and the callback runs with None. It should exit 1, print
+      an error to stderr, and skip the callback. A normal typed answer must
+      still reach the callback unchanged.
+    grader:
+      command: python -m pytest tests/test_prompt_eof.py -q
+      regression_command: python -m pytest tests/test_prompt_ok.py -q
+      timeout_sec: 90
+  - id: click-alias-hidden
+    repo: pallets/click
+    title: Hidden command alias shows up in the group help
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [help]
+    instruction: |
+      A command registered with `hidden=True` is omitted from `--help`, but its
+      alias registered via `context_settings={"ignore_unknown_options": false}`
+      is still listed. Hidden commands and their aliases should both be absent
+      from help and still invokable by name.
+    grader:
+      command: python -m pytest tests/test_hidden_alias.py -q
+      regression_command: python -m pytest tests/test_help_lists.py -q
+      timeout_sec: 90
+  - id: click-exit-code
+    repo: pallets/click
+    title: UsageError from a group is reported as exit code 0
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [errors]
+    instruction: |
+      Raising `click.UsageError` inside a group callback prints the message but
+      the process exits 0. The same exception inside a command exits 2, which
+      is the convention already covered by tests. Group usage errors should exit 2.
+    grader:
+      command: python -m pytest tests/test_usage_group.py -q
+      regression_command: python -m pytest tests/test_usage_command.py -q
+      timeout_sec: 90
+  - id: click-lazy-file
+    repo: pallets/click
+    title: File option opens the path before the command starts
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [files]
+    instruction: |
+      `type=click.File("w")` opens the destination during parsing, so a later
+      validation error leaves a truncated file behind. Open lazily on first
+      read or write. Existing tests that write a complete file should still
+      observe the same bytes and a closed handle afterwards.
+    grader:
+      command: python -m pytest tests/test_lazy_file.py -q
+      regression_command: python -m pytest tests/test_file_write.py -q
+      timeout_sec: 90
+  - id: click-version-option
+    repo: pallets/click
+    title: version_option reports the wrong distribution name
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [version]
+    instruction: |
+      `@click.version_option(package_name="httpie")` prints the version of the
+      top-level `click` distribution. It should resolve `package_name` through
+      importlib.metadata. When the distribution is missing, keep the current
+      error text and exit code.
+    grader:
+      command: python -m pytest tests/test_version_option.py -q
+      regression_command: python -m pytest tests/test_version_missing.py -q
+      timeout_sec: 90

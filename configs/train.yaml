@@ -1,0 +1,39 @@
+# QLoRA + GRPO on Qwen2.5-3B-Instruct.
+# Recorded run: March 2026. Held-out success 12/35 -> 18/35.
+base_model: Qwen/Qwen2.5-3B-Instruct
+method: qlora+grpo
+output_dir: runs/qwen25-3b-grpo
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  bnb_4bit_quant_type: nf4
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+grpo:
+  learning_rate: 5.0e-6
+  beta: 0.04
+  num_generations: 4
+  max_completion_length: 1024
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 8
+  max_steps: 400
+  num_train_epochs: 1
+
+reward:
+  success: 1.0
+  regression_penalty: 0.5
+  format_bonus: 0.1
+
+cost:
+  input_usd_per_mtok: 0.15
+  output_usd_per_mtok: 0.60
+  gpu_usd_per_hour: 2.40

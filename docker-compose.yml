@@ -1,0 +1,21 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  api:
+    build: .
+    ports:
+      - "8741:8741"
+    environment:
+      TERMINALBENCH_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+  web:
+    build: ./apps/web
+    ports:
+      - "8742:3000"
+    environment:
+      API_URL: http://api:8741
+    depends_on:
+      - api

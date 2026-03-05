@@ -1,0 +1,215 @@
+repo: httpie/cli
+tasks:
+  - id: httpie-bool-json
+    repo: httpie/cli
+    title: JSON boolean fields are encoded as strings
+    category: bugfix
+    difficulty: medium
+    split: train
+    fixture: httpie-bool-json
+    timeout_sec: 300
+    image: python:3.12-slim
+    tags: [json]
+    instruction: |
+      A field written as `ok:=true` is a JSON boolean. `ok=true` stays a string.
+      `encode_field` currently returns the Python string `"true"` for the `:=`
+      form, so the request body quotes it. Integers written as `n:=3` already
+      become ints. False must be a real boolean too.
+    grader:
+      command: python -m pytest tests/test_hidden.py tests/test_public.py -q
+      regression_command: python -m pytest tests/test_public.py -q
+      timeout_sec: 60
+  - id: httpie-header-dup
+    repo: httpie/cli
+    title: Repeated request headers keep the first value
+    category: bugfix
+    difficulty: easy
+    split: train
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [headers]
+    instruction: |
+      Passing `Accept:text/plain` and later `Accept:application/json` sends the
+      first value. HTTP allows a duplicate, but HTTPie's own contract is that
+      the last explicit header wins unless the header is `Cookie`. Cookie
+      values should still be joined with `; `.
+    grader:
+      command: python -m pytest tests/test_header_override.py -q
+      regression_command: python -m pytest tests/test_cookie_join.py -q
+      timeout_sec: 90
+  - id: httpie-download-resume
+    repo: httpie/cli
+    title: Resumed download restarts from byte 0
+    category: bugfix
+    difficulty: hard
+    split: train
+    timeout_sec: 700
+    image: python:3.12-slim
+    tags: [download]
+    instruction: |
+      `--download --continue` should send `Range: bytes=<size>-` when the output
+      file already exists, and append the body. A missing file still starts at 0
+      with no Range header. A 416 response should leave the partial file untouched.
+    grader:
+      command: python -m pytest tests/test_resume.py -q
+      regression_command: python -m pytest tests/test_download_fresh.py -q
+      timeout_sec: 120
+  - id: httpie-netrc
+    repo: httpie/cli
+    title: .netrc credentials are ignored for the default host
+    category: bugfix
+    difficulty: medium
+    split: train
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [auth]
+    instruction: |
+      When `-A basic` is set and no `-a` credentials are passed, HTTPie should
+      read the matching machine from `~/.netrc`. It currently only reads netrc
+      when the URL includes an explicit port. A machine with the wrong login
+      host must not be used.
+    grader:
+      command: python -m pytest tests/test_netrc.py -q
+      regression_command: python -m pytest tests/test_auth_explicit.py -q
+      timeout_sec: 90
+  - id: httpie-timeout-exit
+    repo: httpie/cli
+    title: Timeout exits 0 after printing the error
+    category: bugfix
+    difficulty: easy
+    split: train
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [errors]
+    instruction: |
+      A client timeout prints `Request timed out` and exits 0. Exit code should
+      be 2, matching other request failures. A successful 200 still exits 0.
+      KeyboardInterrupt should stay at exit code 130.
+    grader:
+      command: python -m pytest tests/test_timeout_exit.py -q
+      regression_command: python -m pytest tests/test_exit_ok.py -q
+      timeout_sec: 90
+  - id: httpie-multipart
+    repo: httpie/cli
+    title: File field is sent as a quoted filename string
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 600
+    image: python:3.12-slim
+    tags: [multipart]
+    instruction: |
+      `photo@./cat.png` should be a multipart file part with the file bytes and
+      a filename of `cat.png`. The body currently contains the path as a text
+      field. A missing file is an error before the request is sent. Text fields
+      using `=` stay text parts.
+    grader:
+      command: python -m pytest tests/test_multipart_file.py -q
+      regression_command: python -m pytest tests/test_multipart_text.py -q
+      timeout_sec: 90
+  - id: httpie-redirect-method
+    repo: httpie/cli
+    title: 302 after POST is replayed as POST
+    category: bugfix
+    difficulty: hard
+    split: held_out
+    timeout_sec: 600
+    image: python:3.12-slim
+    tags: [redirect]
+    instruction: |
+      A 302 response to a POST should be followed as GET with the body dropped,
+      unless `--follow` is combined with `--all` which is not the default.
+      307 and 308 must preserve the method and body. A redirect loop of more
+      than 30 hops still errors.
+    grader:
+      command: python -m pytest tests/test_redirect_302.py -q
+      regression_command: python -m pytest tests/test_redirect_307.py -q
+      timeout_sec: 120
+  - id: httpie-binary-detect
+    repo: httpie/cli
+    title: Binary responses are pretty-printed as text
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [output]
+    instruction: |
+      A response whose first 512 bytes contain a NUL, or whose Content-Type is
+      `application/octet-stream`, should be written raw to stdout with no
+      highlighting. JSON responses keep highlighting. `--pretty=none` already
+      bypasses highlighting and must stay raw for text too.
+    grader:
+      command: python -m pytest tests/test_binary_body.py -q
+      regression_command: python -m pytest tests/test_pretty_json.py -q
+      timeout_sec: 90
+  - id: httpie-session-cookie
+    repo: httpie/cli
+    title: Session store writes the Cookie request header back out
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [session]
+    instruction: |
+      Named sessions should persist `Set-Cookie` from the response and send it
+      on the next call. They currently also persist the outbound `Cookie`
+      header, so a one-off cookie becomes sticky. Only response cookies belong
+      in the session file. Explicit `-a` auth is not stored.
+    grader:
+      command: python -m pytest tests/test_session_cookie.py -q
+      regression_command: python -m pytest tests/test_session_auth.py -q
+      timeout_sec: 90
+  - id: httpie-charset
+    repo: httpie/cli
+    title: Charset in Content-Type is parsed as part of the mime type
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [headers]
+    instruction: |
+      `Content-Type: application/json; charset=utf-8` is classified as a
+      non-JSON body, so highlighting turns off. Split parameters from the mime
+      type before the JSON check. A true `text/plain` body stays unhighlighted.
+    grader:
+      command: python -m pytest tests/test_charset.py -q
+      regression_command: python -m pytest tests/test_plain_body.py -q
+      timeout_sec: 90
+  - id: httpie-nested-json
+    repo: httpie/cli
+    title: Nested JSON assignment overwrites the parent object
+    category: bugfix
+    difficulty: hard
+    split: held_out
+    timeout_sec: 600
+    image: python:3.12-slim
+    tags: [json]
+    instruction: |
+      `user[name]=Ada user[id]:=1` should produce `{"user": {"name": "Ada", "id": 1}}`.
+      The second key replaces the whole `user` object. Bracket paths one level
+      deep are enough. A bare `user:=2` still replaces the object on purpose.
+    grader:
+      command: python -m pytest tests/test_nested_json.py -q
+      regression_command: python -m pytest tests/test_json_replace.py -q
+      timeout_sec: 90
+  - id: httpie-offline
+    repo: httpie/cli
+    title: --offline still opens a socket
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [offline]
+    instruction: |
+      `--offline` should build the request and print it without connecting.
+      The current path constructs the client and performs the TLS handshake
+      before the offline check. No socket calls may happen in offline mode.
+      Without the flag, the request is sent as usual.
+    grader:
+      command: python -m pytest tests/test_offline.py -q
+      regression_command: python -m pytest tests/test_online_send.py -q
+      timeout_sec: 90

@@ -1,0 +1,70 @@
+[
+  {
+    "step": 0,
+    "mean_reward": 0.233
+  },
+  {
+    "step": 25,
+    "mean_reward": 0.252
+  },
+  {
+    "step": 50,
+    "mean_reward": 0.283
+  },
+  {
+    "step": 75,
+    "mean_reward": 0.3
+  },
+  {
+    "step": 100,
+    "mean_reward": 0.328
+  },
+  {
+    "step": 125,
+    "mean_reward": 0.352
+  },
+  {
+    "step": 150,
+    "mean_reward": 0.369
+  },
+  {
+    "step": 175,
+    "mean_reward": 0.397
+  },
+  {
+    "step": 200,
+    "mean_reward": 0.413
+  },
+  {
+    "step": 225,
+    "mean_reward": 0.438
+  },
+  {
+    "step": 250,
+    "mean_reward": 0.455
+  },
+  {
+    "step": 275,
+    "mean_reward": 0.472
+  },
+  {
+    "step": 300,
+    "mean_reward": 0.498
+  },
+  {
+    "step": 325,
+    "mean_reward": 0.534
+  },
+  {
+    "step": 350,
+    "mean_reward": 0.552
+  },
+  {
+    "step": 375,
+    "mean_reward": 0.572
+  },
+  {
+    "step": 400,
+    "mean_reward": 0.603
+  }
+]

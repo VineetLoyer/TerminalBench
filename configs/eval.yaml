@@ -1,0 +1,8 @@
+suite: bank
+sandbox: local
+max_steps: 12
+model: Qwen/Qwen2.5-3B-Instruct
+splits:
+  - train
+  - held_out
+timeout_sec: 600

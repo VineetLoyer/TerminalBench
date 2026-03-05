@@ -1,0 +1,213 @@
+repo: sharkdp/fd
+tasks:
+  - id: fd-hidden-flag
+    repo: sharkdp/fd
+    title: --hidden does not show dotfiles
+    category: bugfix
+    difficulty: medium
+    split: train
+    fixture: fd-hidden-flag
+    timeout_sec: 300
+    image: python:3.12-slim
+    tags: [walk]
+    instruction: |
+      `visible(path, show_hidden)` decides whether a walk yields a path. Dot
+      segments such as `.env` or `src/.secret` are skipped when `show_hidden`
+      is false. When `show_hidden` is true they should be returned. `.` and `..`
+      are not dotfiles. Non-hidden paths are always visible.
+    grader:
+      command: python -m pytest tests/test_hidden.py tests/test_public.py -q
+      regression_command: python -m pytest tests/test_public.py -q
+      timeout_sec: 60
+  - id: fd-extension
+    repo: sharkdp/fd
+    title: -e matches the full filename when there is no dot
+    category: bugfix
+    difficulty: easy
+    split: train
+    timeout_sec: 400
+    image: rust:1.83-slim
+    tags: [filter]
+    instruction: |
+      `-e rs` should match `main.rs` and not `rs` or `main.rs.bak`. A file named
+      `.rs` is an extension match. Multiple `-e` flags are a union. The pattern
+      argument is still applied on top of the extension filter.
+    grader:
+      command: cargo test --test extension -- --nocapture
+      regression_command: cargo test --test pattern_only -- --nocapture
+      timeout_sec: 180
+  - id: fd-exec-batch
+    repo: sharkdp/fd
+    title: -x batches every path into one command
+    category: bugfix
+    difficulty: medium
+    split: train
+    timeout_sec: 600
+    image: rust:1.83-slim
+    tags: [exec]
+    instruction: |
+      `-x cmd` runs once per path. `-X cmd` runs once with every path appended,
+      splitting a new command only when the argument list would exceed ARG_MAX.
+      Today `-x` behaves like `-X`. `{}` replacement still means the current path
+      for `-x` and is an error for `-X`.
+    grader:
+      command: cargo test --test exec_once -- --nocapture
+      regression_command: cargo test --test exec_batch -- --nocapture
+      timeout_sec: 180
+  - id: fd-exclude
+    repo: sharkdp/fd
+    title: --exclude does not prune directories
+    category: bugfix
+    difficulty: medium
+    split: train
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [filter]
+    instruction: |
+      `--exclude target` should skip the directory and everything under it, not
+      just entries whose basename is exactly `target` at the top. A glob exclude
+      `*.log` still applies to files only. The default skip of `.git` remains.
+    grader:
+      command: cargo test --test exclude_prune -- --nocapture
+      regression_command: cargo test --test exclude_glob -- --nocapture
+      timeout_sec: 180
+  - id: fd-full-path
+    repo: sharkdp/fd
+    title: --full-path still matches on the basename
+    category: bugfix
+    difficulty: medium
+    split: train
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [pattern]
+    instruction: |
+      Without `--full-path`, the regex is matched against the basename. With the
+      flag it is matched against the relative path using `/` separators. A
+      pattern of `src/.*rs` should hit `src/main.rs` only in full-path mode.
+      Absolute paths are not part of the match text.
+    grader:
+      command: cargo test --test full_path -- --nocapture
+      regression_command: cargo test --test basename -- --nocapture
+      timeout_sec: 180
+  - id: fd-size
+    repo: sharkdp/fd
+    title: Size filter treats kilobytes as 1000 bytes
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 400
+    image: rust:1.83-slim
+    tags: [filter]
+    instruction: |
+      `--size +1k` means strictly more than 1024 bytes. The parser currently
+      uses 1000. `+1m` is 1024*1024, `+1b` is bytes, and a bare `--size 10`
+      is an exact byte count. Units are case-insensitive.
+    grader:
+      command: cargo test --test size_units -- --nocapture
+      regression_command: cargo test --test size_exact -- --nocapture
+      timeout_sec: 180
+  - id: fd-owner
+    repo: sharkdp/fd
+    title: --owner compares the owner name to the uid string
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [filter]
+    instruction: |
+      `--owner name` should resolve `name` through the passwd database and
+      compare uids. A numeric `--owner 1000` compares against the uid directly
+      and should not require a passwd entry. Unknown names are an error before
+      the walk starts.
+    grader:
+      command: cargo test --test owner_name -- --nocapture
+      regression_command: cargo test --test owner_uid -- --nocapture
+      timeout_sec: 180
+  - id: fd-max-depth
+    repo: sharkdp/fd
+    title: --max-depth counts the starting directory
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 400
+    image: rust:1.83-slim
+    tags: [walk]
+    instruction: |
+      `--max-depth 1` lists immediate children of the start directory and does
+      not include the start directory itself. Depth 0 lists nothing under the
+      start. Unlimited depth is the default. `--min-depth 2` still hides level 1.
+    grader:
+      command: cargo test --test max_depth -- --nocapture
+      regression_command: cargo test --test min_depth -- --nocapture
+      timeout_sec: 180
+  - id: fd-color
+    repo: sharkdp/fd
+    title: --color never still emits ANSI when stdout is a tty
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 400
+    image: rust:1.83-slim
+    tags: [output]
+    instruction: |
+      `--color never` prints plain paths even on a tty. `--color always` prints
+      ANSI even into a pipe. `--color auto` follows `isatty`. The extension
+      color for a `.rs` file under `always` stays the existing code.
+    grader:
+      command: cargo test --test color_never -- --nocapture
+      regression_command: cargo test --test color_always -- --nocapture
+      timeout_sec: 180
+  - id: fd-regex
+    repo: sharkdp/fd
+    title: Invalid regex is reported as zero matches
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [pattern]
+    instruction: |
+      A pattern of `[` should exit 2 with a parse error on stderr and produce
+      no path list. An empty pattern matches every file that survives filters,
+      which is the current successful behavior and must remain. `--glob` is not
+      part of this task.
+    grader:
+      command: cargo test --test regex_error -- --nocapture
+      regression_command: cargo test --test empty_pattern -- --nocapture
+      timeout_sec: 180
+  - id: fd-ignore-parent
+    repo: sharkdp/fd
+    title: Parent .gitignore is not applied
+    category: bugfix
+    difficulty: hard
+    split: held_out
+    timeout_sec: 700
+    image: rust:1.83-slim
+    tags: [ignore]
+    instruction: |
+      When the search starts in a subdirectory, ignore rules from parent
+      directories up to the git root still apply. `--no-ignore-parent` disables
+      that walk. Rules in the start directory itself always apply unless
+      `--no-ignore` is set. A negated pattern in the child re-includes a file.
+    grader:
+      command: cargo test --test ignore_parent -- --nocapture
+      regression_command: cargo test --test ignore_local -- --nocapture
+      timeout_sec: 180
+  - id: fd-changed-within
+    repo: sharkdp/fd
+    title: --changed-within parses days as minutes
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [filter]
+    instruction: |
+      `--changed-within 2d` means modified in the last 48 hours. The parser
+      treats `d` as minutes. Support `m`, `h`, `d`, and `w`. A value with no
+      unit is minutes, matching fd's existing default. Future mtimes are included.
+    grader:
+      command: cargo test --test changed_within -- --nocapture
+      regression_command: cargo test --test changed_minutes -- --nocapture
+      timeout_sec: 180

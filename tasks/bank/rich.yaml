@@ -1,0 +1,212 @@
+repo: Textualize/rich
+tasks:
+  - id: rich-table-width
+    repo: Textualize/rich
+    title: Table row is wider than the sum of its columns
+    category: bugfix
+    difficulty: medium
+    split: train
+    fixture: rich-table-width
+    timeout_sec: 300
+    image: python:3.12-slim
+    tags: [table, layout]
+    instruction: |
+      `render_row` pads each cell to its column width and joins columns with a
+      single space. The rendered line must be exactly `sum(widths) + n - 1`
+      characters. A single column already matches. Multi-column rows currently
+      come out longer because the joiner is three characters wide.
+    grader:
+      command: python -m pytest tests/test_hidden.py tests/test_public.py -q
+      regression_command: python -m pytest tests/test_public.py -q
+      timeout_sec: 60
+  - id: rich-markup-escape
+    repo: Textualize/rich
+    title: Escaped brackets still open a style span
+    category: bugfix
+    difficulty: medium
+    split: train
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [markup]
+    instruction: |
+      Console markup treats `\[` as a literal bracket, but a following `[/]`
+      still closes a span that was never opened and drops the rest of the line.
+      `\[bold]name[/]` should render as the characters `[bold]name[/]`. Real
+      `[bold]name[/]` must keep rendering in bold.
+    grader:
+      command: python -m pytest tests/test_markup_escape.py -q
+      regression_command: python -m pytest tests/test_markup_basic.py -q
+      timeout_sec: 90
+  - id: rich-progress-zero
+    repo: Textualize/rich
+    title: Progress bar divides by zero when total is 0
+    category: bugfix
+    difficulty: easy
+    split: train
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [progress]
+    instruction: |
+      `Progress.update(task, completed=0)` with `total=0` raises ZeroDivisionError
+      while computing the percentage. Render 100% when total is 0 and completed
+      is 0, and 0% when total is 0 but completed is negative. Positive totals
+      stay on the existing percentage path.
+    grader:
+      command: python -m pytest tests/test_progress_zero.py -q
+      regression_command: python -m pytest tests/test_progress_basic.py -q
+      timeout_sec: 90
+  - id: rich-syntax-theme
+    repo: Textualize/rich
+    title: Syntax highlighter drops the first line of a theme
+    category: bugfix
+    difficulty: medium
+    split: train
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [syntax]
+    instruction: |
+      Loading a Pygments-style theme from a dict skips the first token rule, so
+      keywords render as plain text while strings still pick up the theme.
+      An empty theme should still fall back to the default monochrome styles.
+    grader:
+      command: python -m pytest tests/test_syntax_theme.py -q
+      regression_command: python -m pytest tests/test_syntax_default.py -q
+      timeout_sec: 90
+  - id: rich-panel-padding
+    repo: Textualize/rich
+    title: Panel padding is applied on only one side
+    category: bugfix
+    difficulty: easy
+    split: train
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [panel]
+    instruction: |
+      `Panel(renderable, padding=(0, 2))` inserts two spaces on the left and
+      none on the right, so the measured width is short by 2. Vertical padding
+      is already correct. A padding of 0 must not add spaces.
+    grader:
+      command: python -m pytest tests/test_panel_padding.py -q
+      regression_command: python -m pytest tests/test_panel_basic.py -q
+      timeout_sec: 90
+  - id: rich-json-comma
+    repo: Textualize/rich
+    title: JSON highlighter accepts a trailing comma
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [json]
+    instruction: |
+      `rich.json.JSON` pretty-prints `{"a": 1,}` instead of raising. Invalid
+      JSON should surface a JSONDecodeError to the caller. Valid objects,
+      arrays, and nested structures must keep their current indentation.
+    grader:
+      command: python -m pytest tests/test_json_strict.py -q
+      regression_command: python -m pytest tests/test_json_valid.py -q
+      timeout_sec: 90
+  - id: rich-live-tty
+    repo: Textualize/rich
+    title: Live refresh writes a full frame when stdout is not a tty
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [live]
+    instruction: |
+      `Live(auto_refresh=True)` writes carriage-return frames even when stdout
+      is a pipe, which corrupts captured logs. When not a tty, emit the renderable
+      once and do not refresh. A real tty keeps the current refresh interval.
+    grader:
+      command: python -m pytest tests/test_live_pipe.py -q
+      regression_command: python -m pytest tests/test_live_tty.py -q
+      timeout_sec: 90
+  - id: rich-tree-guide
+    repo: Textualize/rich
+    title: Tree guide uses the ASCII branch for the last child
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [tree]
+    instruction: |
+      With `guide_style` left at the default unicode guide, the last child of a
+      node is drawn with ├ rather than └. Intermediate children must stay ├.
+      `ascii_only=True` should keep using `+--` and `` `-- `` as it does now.
+    grader:
+      command: python -m pytest tests/test_tree_last.py -q
+      regression_command: python -m pytest tests/test_tree_ascii.py -q
+      timeout_sec: 90
+  - id: rich-console-export
+    repo: Textualize/rich
+    title: export_text keeps style open-tags in the plain dump
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [console]
+    instruction: |
+      After `console.record = True`, `export_text()` includes literal `[bold]`
+      markers. `export_html()` is correct. Plain export should be the visible
+      characters only, including spaces that came from padding.
+    grader:
+      command: python -m pytest tests/test_export_text.py -q
+      regression_command: python -m pytest tests/test_export_html.py -q
+      timeout_sec: 90
+  - id: rich-emoji-variant
+    repo: Textualize/rich
+    title: Emoji replacement eats the following colon
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [emoji]
+    instruction: |
+      The token `:smile:` is replaced correctly, but a clock time `10:30` loses
+      the first colon and becomes `1030` whenever emoji substitution is on.
+      Only names wrapped in colons on both sides should be replaced. Unknown
+      `:not_an_emoji:` stays literal.
+    grader:
+      command: python -m pytest tests/test_emoji_clock.py -q
+      regression_command: python -m pytest tests/test_emoji_known.py -q
+      timeout_sec: 90
+  - id: rich-bar-zero
+    repo: Textualize/rich
+    title: Bar with width 0 raises instead of rendering empty
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 400
+    image: python:3.12-slim
+    tags: [bar]
+    instruction: |
+      `Bar(size=0)` throws when the widget width is 0 during a narrow terminal
+      resize. Render an empty string. A bar of width 10 with size 1.0 still
+      fills all 10 cells, and size 0.0 still renders 10 empty cells.
+    grader:
+      command: python -m pytest tests/test_bar_zero.py -q
+      regression_command: python -m pytest tests/test_bar_full.py -q
+      timeout_sec: 90
+  - id: rich-log-time
+    repo: Textualize/rich
+    title: Log highlighter styles the time in every line
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: python:3.12-slim
+    tags: [log]
+    instruction: |
+      The log highlighter marks the first `HH:MM:SS` on a line as a time, which
+      is right for the prefix and wrong for a time mentioned in the message.
+      Only a time at column 0, optionally followed by a space, should be styled.
+      ISO dates in the message stay unstyled.
+    grader:
+      command: python -m pytest tests/test_log_time.py -q
+      regression_command: python -m pytest tests/test_log_prefix.py -q
+      timeout_sec: 90

@@ -1,0 +1,216 @@
+repo: BurntSushi/ripgrep
+tasks:
+  - id: rg-glob-negation
+    repo: BurntSushi/ripgrep
+    title: A leading bang in a glob is matched literally
+    category: bugfix
+    difficulty: medium
+    split: train
+    fixture: rg-glob-negation
+    timeout_sec: 300
+    image: python:3.12-slim
+    tags: [glob]
+    instruction: |
+      `match_glob` keeps a file when any include pattern matches and no exclude
+      pattern matches. Patterns that start with `!` are excludes, and the `!`
+      is not part of the glob. Includes default to `*` when every pattern is
+      negated. Today the bang is included in the match, so nothing is excluded.
+    grader:
+      command: python -m pytest tests/test_hidden.py tests/test_public.py -q
+      regression_command: python -m pytest tests/test_public.py -q
+      timeout_sec: 60
+  - id: rg-binary-null
+    repo: BurntSushi/ripgrep
+    title: Binary detection misses a NUL past the first kilobyte
+    category: bugfix
+    difficulty: medium
+    split: train
+    timeout_sec: 600
+    image: rust:1.83-slim
+    tags: [binary]
+    instruction: |
+      A file with a NUL byte inside the first 8 KiB is binary unless `--text`
+      is set. Detection currently only scans the first 1024 bytes, so a NUL at
+      offset 2000 is searched as text. `--text` must still search that file.
+      A file of pure UTF-8 stays text.
+    grader:
+      command: cargo test --test binary_detect -- --nocapture
+      regression_command: cargo test --test text_files -- --nocapture
+      timeout_sec: 180
+  - id: rg-hidden-vcs
+    repo: BurntSushi/ripgrep
+    title: --hidden still skips .git
+    category: bugfix
+    difficulty: easy
+    split: train
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [ignore]
+    instruction: |
+      `--hidden` should search dotfiles and dot-directories, but VCS directories
+      (`.git`, `.hg`, `.svn`) stay ignored unless `--no-ignore-vcs` is also set.
+      Currently `--hidden` skips every dot path, including `.env`. A normal
+      `src/` tree is unchanged.
+    grader:
+      command: cargo test --test hidden_flag -- --nocapture
+      regression_command: cargo test --test default_walk -- --nocapture
+      timeout_sec: 180
+  - id: rg-multiline
+    repo: BurntSushi/ripgrep
+    title: Multiline mode does not let dot match a newline
+    category: bugfix
+    difficulty: hard
+    split: train
+    timeout_sec: 700
+    image: rust:1.83-slim
+    tags: [regex]
+    instruction: |
+      `-U` multiline search should allow `.` to match `\n` when the pattern
+      uses `(?s)` or when `--multiline-dotall` is passed. Without either, `.`
+      must not cross lines. A pattern that already uses `\n` explicitly should
+      keep matching in both modes.
+    grader:
+      command: cargo test --test multiline -- --nocapture
+      regression_command: cargo test --test line_regex -- --nocapture
+      timeout_sec: 180
+  - id: rg-type-add
+    repo: BurntSushi/ripgrep
+    title: --type-add replaces the built-in type instead of extending it
+    category: bugfix
+    difficulty: medium
+    split: train
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [types]
+    instruction: |
+      `--type-add 'py:*.pyi' -tpy` should match both `.py` and `.pyi`. The flag
+      currently replaces the built-in `py` globs, so `.py` files disappear.
+      Adding a brand new type name should still work, and an unknown `-t` is an error.
+    grader:
+      command: cargo test --test type_add -- --nocapture
+      regression_command: cargo test --test type_builtin -- --nocapture
+      timeout_sec: 180
+  - id: rg-context-overlap
+    repo: BurntSushi/ripgrep
+    title: Overlapping context lines are printed twice
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 600
+    image: rust:1.83-slim
+    tags: [context]
+    instruction: |
+      Two matches four lines apart with `-C 3` share context lines. Those lines
+      should be printed once, with a `--` separator only between non-overlapping
+      groups. `-A` and `-B` counts for an isolated match stay the same.
+    grader:
+      command: cargo test --test context_overlap -- --nocapture
+      regression_command: cargo test --test context_single -- --nocapture
+      timeout_sec: 180
+  - id: rg-utf16
+    repo: BurntSushi/ripgrep
+    title: UTF-16LE files are searched as binary
+    category: bugfix
+    difficulty: hard
+    split: held_out
+    timeout_sec: 700
+    image: rust:1.83-slim
+    tags: [encoding]
+    instruction: |
+      `--encoding utf-16` should decode UTF-16LE input, including a leading BOM,
+      before matching. Without `--encoding`, a UTF-16 file remains binary and
+      is skipped. Invalid sequences under an explicit encoding are an error for
+      that file, not a silent skip.
+    grader:
+      command: cargo test --test encoding_utf16 -- --nocapture
+      regression_command: cargo test --test encoding_utf8 -- --nocapture
+      timeout_sec: 180
+  - id: rg-sort-path
+    repo: BurntSushi/ripgrep
+    title: --sort path is byte-wise and case-sensitive
+    category: bugfix
+    difficulty: easy
+    split: held_out
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [sort]
+    instruction: |
+      `--sort path` should order paths case-insensitively, with a stable
+      byte-wise tie break. The current sort places `B` before `a`. Unsorted
+      output must stay in walk order. `--sort modified` is covered by existing tests.
+    grader:
+      command: cargo test --test sort_path -- --nocapture
+      regression_command: cargo test --test sort_modified -- --nocapture
+      timeout_sec: 180
+  - id: rg-replace-capture
+    repo: BurntSushi/ripgrep
+    title: Replacement references $1 even when there is no group
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [replace]
+    instruction: |
+      `-r '$1'` with a pattern that has no capture group should emit a literal
+      `$1` only when the dollar is escaped as `$$1` is not the rule — an unknown
+      group number is an error before any file is touched. `$0` still means the
+      whole match. A real group `$1` keeps substituting.
+    grader:
+      command: cargo test --test replace_group -- --nocapture
+      regression_command: cargo test --test replace_whole -- --nocapture
+      timeout_sec: 180
+  - id: rg-pcre2-backtrack
+    repo: BurntSushi/ripgrep
+    title: PCRE2 backtrack limit aborts the whole search
+    category: bugfix
+    difficulty: hard
+    split: held_out
+    timeout_sec: 700
+    image: rust:1.83-slim
+    tags: [pcre2]
+    instruction: |
+      When the PCRE2 engine hits the backtrack limit on one line, ripgrep should
+      report that file on stderr and continue with the next file, exiting 2 if
+      any file failed that way and 0 if a later file still matched. A clean
+      match with `-P` still exits 0. The default regex engine is unchanged.
+    grader:
+      command: cargo test --test pcre2_limit -- --nocapture
+      regression_command: cargo test --test default_engine -- --nocapture
+      timeout_sec: 180
+  - id: rg-files-without-match
+    repo: BurntSushi/ripgrep
+    title: --files-without-match counts binary skips as misses
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [output]
+    instruction: |
+      `--files-without-match` lists files that were searched and had no match.
+      Binary files that were skipped must not appear. Files searched because of
+      `--text` that contain no match should appear. `--files-with-matches` is
+      already correct and must stay that way.
+    grader:
+      command: cargo test --test files_without -- --nocapture
+      regression_command: cargo test --test files_with -- --nocapture
+      timeout_sec: 180
+  - id: rg-max-columns
+    repo: BurntSushi/ripgrep
+    title: --max-columns truncates the matched line marker
+    category: bugfix
+    difficulty: medium
+    split: held_out
+    timeout_sec: 500
+    image: rust:1.83-slim
+    tags: [output]
+    instruction: |
+      `--max-columns 20` should omit lines longer than 20 bytes instead of
+      printing a truncated line that still looks like a match. `--max-columns-preview`
+      may print a prefix plus an ellipsis. Line numbers for the following match
+      must stay aligned with the file.
+    grader:
+      command: cargo test --test max_columns -- --nocapture
+      regression_command: cargo test --test line_numbers -- --nocapture
+      timeout_sec: 180
