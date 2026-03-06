@@ -7,7 +7,7 @@ __pycache__/
 dist/
 build/
 .env
-runs/
+/runs/
 .DS_Store
 
 apps/web/node_modules/
