@@ -34,6 +34,30 @@ export function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function Missing({
+  title,
+  detail,
+  href,
+  linkLabel,
+}: {
+  title: string;
+  detail: string;
+  href: string;
+  linkLabel: string;
+}) {
+  return (
+    <Shell>
+      <h1 className="text-xl font-medium">{title}</h1>
+      <p className="mt-2 max-w-xl text-sm text-muted-foreground">{detail}</p>
+      <p className="mt-4 text-sm">
+        <Link href={href} className="underline">
+          {linkLabel}
+        </Link>
+      </p>
+    </Shell>
+  );
+}
+
 export function ApiDown() {
   return (
     <Shell>

@@ -78,11 +78,3 @@ export function money(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-export function isNextNotFound(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "digest" in error &&
-    String((error as { digest: unknown }).digest).includes("404")
-  );
-}

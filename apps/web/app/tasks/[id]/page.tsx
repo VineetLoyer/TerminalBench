@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { isNextNotFound } from "@/lib/api";
-import { notFound } from "next/navigation";
-import { ApiDown, Shell } from "@/components/shell";
+import { ApiDown, Missing, Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
 import { api, type Episode, type Run, type Task } from "@/lib/api";
 
@@ -9,12 +7,22 @@ export const dynamic = "force-dynamic";
 
 export default async function TaskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const response = await fetch(`${process.env.API_URL || "http://127.0.0.1:8741"}/tasks/${id}`, {
+    cache: "no-store",
+  }).catch(() => null);
+  if (!response) return <ApiDown />;
+  if (response.status === 404) {
+    return (
+      <Missing
+        title="That task is not in the bank"
+        detail={`No task is named “${id}”. The bank has 60 tasks across five repositories.`}
+        href="/tasks"
+        linkLabel="Back to the task list"
+      />
+    );
+  }
+  if (!response.ok) return <ApiDown />;
   try {
-    const response = await fetch(`${process.env.API_URL || "http://127.0.0.1:8741"}/tasks/${id}`, {
-      cache: "no-store",
-    });
-    if (response.status === 404) notFound();
-    if (!response.ok) return <ApiDown />;
     const task = (await response.json()) as Task;
     const tuned = await api<Run>("/runs/2026-03-03-qlora-grpo");
     const baseline = await api<Run>("/runs/2026-02-24-baseline");
@@ -61,8 +69,7 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
         </div>
       </Shell>
     );
-  } catch (error) {
-    if (isNextNotFound(error)) throw error;
+  } catch {
     return <ApiDown />;
   }
 }

@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ApiDown, Shell } from "@/components/shell";
+import { ApiDown, Missing, Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -10,18 +9,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { api, isNextNotFound, money, pct, repoName, type Run } from "@/lib/api";
+import { money, pct, repoName, type Run } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export default async function RunPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const response = await fetch(`${process.env.API_URL || "http://127.0.0.1:8741"}/runs/${id}`, {
+    cache: "no-store",
+  }).catch(() => null);
+  if (!response) return <ApiDown />;
+  if (response.status === 404) {
+    return (
+      <Missing
+        title="That run is not in the ledger"
+        detail={`No recorded run is named “${id}”.`}
+        href="/runs"
+        linkLabel="Back to the runs"
+      />
+    );
+  }
+  if (!response.ok) return <ApiDown />;
   try {
-    const response = await fetch(`${process.env.API_URL || "http://127.0.0.1:8741"}/runs/${id}`, {
-      cache: "no-store",
-    });
-    if (response.status === 404) notFound();
-    if (!response.ok) return <ApiDown />;
     const run = (await response.json()) as Run;
     return (
       <Shell>
@@ -76,8 +85,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
         </div>
       </Shell>
     );
-  } catch (error) {
-    if (isNextNotFound(error)) throw error;
+  } catch {
     return <ApiDown />;
   }
 }
