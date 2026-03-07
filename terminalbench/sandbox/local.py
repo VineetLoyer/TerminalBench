@@ -1,18 +1,42 @@
 import os
 import shutil
+import stat
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 from terminalbench.sandbox.base import ExecResult, GradeResult, Sandbox
 
 
+def remove_tree(path: Path) -> None:
+    # Git pack files are read-only, which makes a plain rmtree fail on Windows.
+    def _retry(func, target, _exc):
+        os.chmod(target, stat.S_IWRITE)
+        func(target)
+
+    if not path.exists():
+        return
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_retry)
+    else:
+        shutil.rmtree(path, onerror=_retry)
+
+
+def shell_argv(command: str) -> list[str] | str:
+    # On Windows, `bash` on PATH is often the WSL launcher, which runs in a different
+    # filesystem and Python. cmd.exe keeps the command next to this interpreter.
+    if os.name == "nt":
+        return command
+    return ["bash", "-lc", command]
+
+
 class LocalSandbox(Sandbox):
     """Developer fallback. Copies a fixture into a temp dir. Not a security boundary."""
 
     def __init__(self, workspace: Path, hidden: Path | None = None):
-        self._root = Path(subprocess.check_output(["mktemp", "-d"], text=True).strip())
+        self._root = Path(tempfile.mkdtemp(prefix="tb-"))
         self._work = self._root / "work"
         shutil.copytree(workspace, self._work)
         self._hidden = hidden
@@ -27,8 +51,10 @@ class LocalSandbox(Sandbox):
             env = os.environ.copy()
             bindir = str(Path(sys.executable).parent)
             env["PATH"] = bindir + os.pathsep + env.get("PATH", "")
+            argv = shell_argv(command)
             proc = subprocess.run(
-                ["bash", "-lc", command],
+                argv,
+                shell=isinstance(argv, str),
                 cwd=self._work,
                 capture_output=True,
                 text=True,
@@ -80,4 +106,4 @@ class LocalSandbox(Sandbox):
         )
 
     def close(self) -> None:
-        shutil.rmtree(self._root, ignore_errors=True)
+        remove_tree(self._root)
