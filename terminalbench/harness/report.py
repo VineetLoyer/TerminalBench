@@ -23,6 +23,36 @@ def load_run_csv(path: Path) -> list[EpisodeRecord]:
     return records
 
 
+LEDGER_FIELDS = [
+    "task_id",
+    "success",
+    "regression",
+    "steps",
+    "latency_sec",
+    "prompt_tokens",
+    "completion_tokens",
+]
+
+
+def write_run_csv(path: Path, records: list[EpisodeRecord]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=LEDGER_FIELDS)
+        writer.writeheader()
+        for record in records:
+            writer.writerow(
+                {
+                    "task_id": record.task_id,
+                    "success": str(record.success).lower(),
+                    "regression": str(record.regression).lower(),
+                    "steps": record.steps,
+                    "latency_sec": f"{record.latency_sec:.2f}",
+                    "prompt_tokens": record.prompt_tokens,
+                    "completion_tokens": record.completion_tokens,
+                }
+            )
+
+
 def summarize_split(
     records: list[EpisodeRecord], tasks: list[Task], split: str | None
 ) -> Aggregate:

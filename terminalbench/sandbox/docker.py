@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import time
@@ -24,6 +25,8 @@ class DockerSandbox(Sandbox):
         self._name = f"tb-{uuid.uuid4().hex[:10]}"
         self._host_work = Path(workspace).resolve()
         self._hidden = hidden
+        # Match the host user so files the agent writes into the bind mount stay removable.
+        user = ["--user", f"{os.getuid()}:{os.getgid()}"] if hasattr(os, "getuid") else []
         subprocess.run(
             [
                 "docker",
@@ -31,6 +34,7 @@ class DockerSandbox(Sandbox):
                 "-d",
                 "--name",
                 self._name,
+                *user,
                 "--network",
                 "none",
                 "--cpus",

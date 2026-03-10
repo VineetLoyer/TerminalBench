@@ -16,6 +16,14 @@ from terminalbench.sandbox.base import Sandbox
 from terminalbench.tasks.schema import Task
 
 
+def _parse(raw: str) -> dict:
+    # Small models drift out of JSON; an unparseable turn is treated as an empty one.
+    try:
+        return parse_json(raw)
+    except ValueError:
+        return {}
+
+
 @dataclass
 class StepLog:
     role: str
@@ -90,7 +98,7 @@ class EpisodeRunner:
             role="planner",
         )
         trajectory.steps.append(StepLog("planner", raw))
-        parsed = parse_json(raw)
+        parsed = _parse(raw)
         steps = parsed.get("steps") or []
         return [str(step) for step in steps]
 
@@ -103,7 +111,7 @@ class EpisodeRunner:
             role="executor",
         )
         trajectory.steps.append(StepLog("executor", raw))
-        return parse_json(raw)
+        return _parse(raw)
 
     def _review(self, task, command, output, trajectory) -> dict:
         raw = self.client.complete(
@@ -114,7 +122,7 @@ class EpisodeRunner:
             role="reviewer",
         )
         trajectory.steps.append(StepLog("reviewer", raw))
-        return parse_json(raw)
+        return _parse(raw)
 
 
 def apply_oracle(sandbox: Sandbox, solution_dir) -> None:

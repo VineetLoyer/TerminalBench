@@ -6,3 +6,7 @@ splits:
   - train
   - held_out
 timeout_sec: 600
+# Docker runs swap in images with the grader toolchain preinstalled.
+# Build with: docker build -f docker/sandbox.Dockerfile -t terminalbench-sandbox .
+image_overrides:
+  python:3.12-slim: terminalbench-sandbox

@@ -24,6 +24,7 @@ class Task(BaseModel):
     timeout_sec: int = 600
     image: str = "python:3.12-slim"
     fixture: str | None = None
+    ref: str | None = None
     grader: GraderSpec
     tags: list[str] = Field(default_factory=list)
 

@@ -52,8 +52,8 @@ class ScriptedClient:
         return text
 
 
-def client_from_env() -> ChatClient:
-    model = os.environ.get("TERMINALBENCH_MODEL_NAME", "Qwen/Qwen2.5-3B-Instruct")
+def client_from_env(model: str | None = None) -> ChatClient:
+    model = os.environ.get("TERMINALBENCH_MODEL_NAME") or model or "Qwen/Qwen2.5-3B-Instruct"
     base_url = os.environ.get("OPENAI_BASE_URL", "http://127.0.0.1:8000/v1")
     api_key = os.environ.get("OPENAI_API_KEY", "local")
     return OpenAICompatibleClient(model=model, base_url=base_url, api_key=api_key)

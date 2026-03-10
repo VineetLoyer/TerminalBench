@@ -1,4 +1,4 @@
-.PHONY: install test serve web dry-run
+.PHONY: install test serve web dry-run sandbox-image
 
 install:
 	python3 -m venv .venv
@@ -16,3 +16,6 @@ web:
 
 dry-run:
 	.venv/bin/terminalbench train --dry-run --out runs/prepare
+
+sandbox-image:
+	docker build -f docker/sandbox.Dockerfile -t terminalbench-sandbox .
