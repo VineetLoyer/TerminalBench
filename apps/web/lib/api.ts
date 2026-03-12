@@ -8,6 +8,14 @@ export async function api<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export async function tryApi<T>(path: string): Promise<T | null> {
+  try {
+    return await api<T>(path);
+  } catch {
+    return null;
+  }
+}
+
 export type Aggregate = {
   n: number;
   n_success: number;
@@ -62,6 +70,7 @@ export type Task = {
   timeout_sec: number;
   image: string;
   fixture: string | null;
+  ref: string | null;
   grader: { command: string; timeout_sec: number; regression_command: string | null };
   tags: string[];
 };

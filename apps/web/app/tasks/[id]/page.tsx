@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ApiDown, Missing, Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
-import { api, type Episode, type Run, type Task } from "@/lib/api";
+import { tryApi, type Episode, type Run, type Task } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -22,56 +22,53 @@ export default async function TaskPage({ params }: { params: Promise<{ id: strin
     );
   }
   if (!response.ok) return <ApiDown />;
-  try {
-    const task = (await response.json()) as Task;
-    const tuned = await api<Run>("/runs/2026-03-03-qlora-grpo");
-    const baseline = await api<Run>("/runs/2026-02-24-baseline");
-    const tunedEp = tuned.episodes.find((row) => row.task_id === id);
-    const baseEp = baseline.episodes.find((row) => row.task_id === id);
-    return (
-      <Shell>
-        <Link href="/tasks" className="text-sm text-muted-foreground hover:text-foreground">
-          Task bank
-        </Link>
-        <h1 className="mt-2 text-2xl font-medium tracking-tight">{task.title}</h1>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Badge variant="outline">{task.repo}</Badge>
-          <Badge variant="outline">{task.split === "held_out" ? "held-out" : "train"}</Badge>
-          <Badge variant="outline">{task.difficulty}</Badge>
-          <Badge variant="outline">{task.category}</Badge>
-          {task.fixture && <Badge>local fixture</Badge>}
+  const task = (await response.json().catch(() => null)) as Task | null;
+  const tuned = await tryApi<Run>("/runs/2026-03-03-qlora-grpo");
+  const baseline = await tryApi<Run>("/runs/2026-02-24-baseline");
+  if (!task || !tuned || !baseline) return <ApiDown />;
+  const tunedEp = tuned.episodes.find((row) => row.task_id === id);
+  const baseEp = baseline.episodes.find((row) => row.task_id === id);
+  return (
+    <Shell>
+      <Link href="/tasks" className="text-sm text-muted-foreground hover:text-foreground">
+        Task bank
+      </Link>
+      <h1 className="mt-2 text-2xl font-medium tracking-tight">{task.title}</h1>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Badge variant="outline">{task.repo}</Badge>
+        <Badge variant="outline">{task.split === "held_out" ? "held-out" : "train"}</Badge>
+        <Badge variant="outline">{task.difficulty}</Badge>
+        <Badge variant="outline">{task.category}</Badge>
+        {task.fixture && <Badge>local fixture</Badge>}
+      </div>
+      <pre className="mt-6 whitespace-pre-wrap rounded-lg border border-border bg-card p-4 font-sans text-sm leading-6">
+        {task.instruction.trim()}
+      </pre>
+      <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
+        <div>
+          <dt className="text-muted-foreground">Image</dt>
+          <dd className="font-mono text-xs">{task.image}</dd>
         </div>
-        <pre className="mt-6 whitespace-pre-wrap rounded-lg border border-border bg-card p-4 font-sans text-sm leading-6">
-          {task.instruction.trim()}
-        </pre>
-        <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-muted-foreground">Image</dt>
-            <dd className="font-mono text-xs">{task.image}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Grader</dt>
-            <dd className="font-mono text-xs">{task.grader.command}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Regression check</dt>
-            <dd className="font-mono text-xs">{task.grader.regression_command || "none"}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Episode timeout</dt>
-            <dd>{task.timeout_sec}s</dd>
-          </div>
-        </dl>
-        <h2 className="mt-8 text-base font-medium">Recorded outcomes</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <Outcome label="Baseline" episode={baseEp} />
-          <Outcome label="QLoRA/GRPO" episode={tunedEp} />
+        <div>
+          <dt className="text-muted-foreground">Grader</dt>
+          <dd className="font-mono text-xs">{task.grader.command}</dd>
         </div>
-      </Shell>
-    );
-  } catch {
-    return <ApiDown />;
-  }
+        <div>
+          <dt className="text-muted-foreground">Regression check</dt>
+          <dd className="font-mono text-xs">{task.grader.regression_command || "none"}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Episode timeout</dt>
+          <dd>{task.timeout_sec}s</dd>
+        </div>
+      </dl>
+      <h2 className="mt-8 text-base font-medium">Recorded outcomes</h2>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Outcome label="Baseline" episode={baseEp} />
+        <Outcome label="QLoRA/GRPO" episode={tunedEp} />
+      </div>
+    </Shell>
+  );
 }
 
 function Outcome({ label, episode }: { label: string; episode: Episode | undefined }) {

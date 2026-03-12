@@ -2,21 +2,18 @@ import Link from "next/link";
 import { ApiDown, Shell } from "@/components/shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api, money, pct, repoName, type Run } from "@/lib/api";
+import { money, pct, repoName, tryApi, type Run } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {
-  try {
-    const data = await api<{ baseline: Run; tuned: Run }>("/compare");
-    return (
-      <Shell>
-        <Overview baseline={data.baseline} tuned={data.tuned} />
-      </Shell>
-    );
-  } catch {
-    return <ApiDown />;
-  }
+  const data = await tryApi<{ baseline: Run; tuned: Run }>("/compare");
+  if (!data) return <ApiDown />;
+  return (
+    <Shell>
+      <Overview baseline={data.baseline} tuned={data.tuned} />
+    </Shell>
+  );
 }
 
 function Overview({ baseline, tuned }: { baseline: Run; tuned: Run }) {
