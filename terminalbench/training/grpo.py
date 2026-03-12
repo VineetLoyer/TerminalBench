@@ -1,8 +1,8 @@
 """GRPO fine-tune on the train split.
 
-The reward function is `terminalbench.training.reward.reward`. Completions are
-graded by replaying the executor command in the sandbox harness. This module
-only wires TRL; it does not download weights on import.
+The reward function is `terminalbench.training.reward.SandboxReward`. Completions
+are graded by replaying their commands in the sandbox harness. This module only
+wires TRL; it does not download weights on import.
 """
 
 from pathlib import Path
@@ -34,10 +34,20 @@ def train(cfg_path: Path, dataset_path: Path, output_dir: Path) -> None:
     from datasets import load_dataset
     from trl import GRPOConfig, GRPOTrainer
 
+    from terminalbench.tasks.loader import load_tasks
     from terminalbench.training.qlora import build_model_and_tokenizer
-    from terminalbench.training.reward import reward
+    from terminalbench.training.reward import SandboxReward
 
     cfg = load_train_config(cfg_path)
+    weights = cfg.get("reward", {})
+    reward = SandboxReward(
+        load_tasks(),
+        sandbox=weights.get("sandbox", "local"),
+        image_overrides=weights.get("image_overrides"),
+        success=weights.get("success", 1.0),
+        regression_penalty=weights.get("regression_penalty", 0.5),
+        format_bonus=weights.get("format_bonus", 0.1),
+    )
     model, tokenizer = build_model_and_tokenizer(cfg)
     dataset = load_dataset("json", data_files=str(dataset_path), split="train")
     grpo = cfg["grpo"]

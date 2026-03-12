@@ -18,7 +18,10 @@ def build_prompts(tasks: list[Task], split: str = "train") -> list[dict]:
                     "Solve the task inside the sandbox. Preserve existing behavior.\n\n"
                     f"Repository: {task.repo}\n"
                     f"Task: {task.title}\n\n"
-                    f"{task.instruction.strip()}\n"
+                    f"{task.instruction.strip()}\n\n"
+                    "Reply with JSON only: "
+                    '{"commands": ["...", "..."]}. '
+                    "Commands run in order from the repository root.\n"
                 ),
             }
         )
