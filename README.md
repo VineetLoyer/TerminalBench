@@ -47,7 +47,14 @@ terminalbench tasks
 terminalbench grade click-default-envvar --solution
 terminalbench report 2026-03-03-qlora-grpo
 terminalbench train --dry-run
+terminalbench run --fixtures-only             # live agent on the five fixtures
+terminalbench run fd-extension --sandbox docker
+terminalbench checkout fd-extension           # upstream clone into runs/checkouts/
 ```
+
+`terminalbench run` reads `configs/eval.yaml` (sandbox, step budget, model, splits) and writes `runs/<run-id>/<run-id>.csv` in the same format as `results/`, plus one trajectory JSON per task. `terminalbench report runs/<run-id>/<run-id>.csv` summarizes it. An episode that errors is recorded as a failure and the run continues. An unreachable model endpoint stops the run.
+
+Spec tasks are cloned from GitHub into a bare mirror under `~/.cache/terminalbench/repos` (override with `TERMINALBENCH_CACHE`) and then cloned again into a fresh workspace per episode. A task's optional `ref` pins a tag, branch, or commit; without it the default branch is used. Docker runs swap `python:3.12-slim` for the `terminalbench-sandbox` image (`make sandbox-image`) so pytest is available with the network off.
 
 `--dry-run` writes the 25 train prompts and the resolved config. It does not download weights. The real train path is `terminalbench train --config configs/train.yaml` and needs the `train` extra (`transformers`, `peft`, `trl`, `bitsandbytes`).
 
@@ -71,6 +78,8 @@ Docker flags: `--network none`, `--cpus 1`, `--memory 1g`, `--pids-limit 256`, `
 
 `configs/train.yaml` is the March run: 4-bit NF4, LoRA r=16 on the attention and MLP projections, GRPO with 4 samples, beta 0.04, 400 steps, learning rate 5e-6. Reward is `1.0` for a clean pass, `-0.5` for a regression, `+0.1` if the completion is well-formed JSON.
 
+Each prompt asks for `{"commands": [...]}`. `SandboxReward` replays those commands in a fresh sandbox for the prompt's task, runs the grader, and scores the result, so a completion is only rewarded for what it actually changes. The sandbox and weights come from the `reward` block of `configs/train.yaml`.
+
 ## Task format
 
 ```yaml
@@ -78,6 +87,7 @@ id: click-default-envvar
 repo: pallets/click
 split: train          # or held_out
 fixture: click-default-envvar   # optional, maps to tasks/fixtures/<id>
+ref: v8.1.7           # optional upstream tag, branch, or commit for spec tasks
 grader:
   command: python -m pytest tests/test_hidden.py tests/test_public.py -q
   regression_command: python -m pytest tests/test_public.py -q
